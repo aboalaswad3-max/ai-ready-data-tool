@@ -1,0 +1,31 @@
+# انسخ محتوى هذا الملف إلى ملف اسمه .gitignore في مختبر 2
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# البيانات والمخرجات — لا تُرفع أبداً
+data/raw/
+data/processed/
+output/
+*.parquet
+*.pt
+*.pth
+*.h5
+*.onnx
+checkpoints/
+runs/
+mlruns/
+
+# الأسرار — خطر أمني مباشر
+.env
+*.key
+*.pem
+credentials.json
+
+# دفاتر / نظام / محرر
+.ipynb_checkpoints/
+.DS_Store
+.vscode/
+.idea/

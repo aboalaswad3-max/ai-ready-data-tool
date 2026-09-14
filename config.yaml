@@ -1,0 +1,12 @@
+# إعدادات أداة تجهيز البيانات — ai-ready-data-tool
+
+input: data/raw/sales_sample.csv
+output: output/clean.csv
+
+# استراتيجية معالجة القيم المفقودة في الأعمدة الرقمية
+#   mean   = المتوسط الحسابي
+#   median = الوسيط (أمتن أمام القيم الشاذة)
+#   drop   = حذف الصف كاملاً
+missing_strategy: mean
+
+drop_duplicates: true
