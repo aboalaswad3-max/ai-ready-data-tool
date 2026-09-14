@@ -1,3 +1,3 @@
 السلام عليكم ورحمة الله وبركاته 
 ## Project Setup
-This tool cleans CSV data.
+This tool cleans CSV data.Git Sync test
