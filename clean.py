@@ -5,3 +5,6 @@ def load_csv():
 
 def handle_missing_values(data):
     return data
+
+def test_review():
+    return "Review test"
