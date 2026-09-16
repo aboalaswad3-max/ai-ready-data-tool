@@ -10,9 +10,9 @@ import os
 import statistics
 import sys
 
-NUM = 0.15        # الضريبة
-NUM2 = 1000       # الحد
-R = {"sanaa": 1, "aden": 2, "taiz": 3, "hodeidah": 4}
+TAX_RATE = 0.15        
+HIGH_VALUE_THRESHOLD = 1000       
+REGION_CODES = {"sanaa": 1, "aden": 2, "taiz": 3, "hodeidah": 4}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -23,12 +23,12 @@ class ThresholdStrategy:
 
 class FixedThresholdStrategy(ThresholdStrategy):
     def get(self, rows):
-        return NUM2
+        return HIGH_VALUE_THRESHOLD
 
 
 class AdaptiveThresholdStrategy(ThresholdStrategy):
     def get(self, rows):
-        return NUM2
+        return HIGH_VALUE_THRESHOLD
 
 
 class ThresholdStrategyFactory:
@@ -43,11 +43,11 @@ class ThresholdStrategyFactory:
 
 
 # ─────────────────────────────────────────────────────────────
-def getData(f):
-    if not os.path.exists(f):
-        print("warning: not found: " + f, file=sys.stderr)
+def read_table(input_path):
+    if not os.path.exists(input_path):
+        print("warning: not found: " + input_path, file=sys.stderr)
         return []
-    with open(f, newline="", encoding="utf-8-sig") as fh:
+    with open(input_path, newline="", encoding="utf-8-sig") as fh:
         return [r for r in csv.reader(fh) if any(c.strip() for c in r)]
 
 
@@ -61,73 +61,73 @@ def calc2(a, b):
 #         f.write("<rows>")
 
 
-def p(f, o, t=True, d=False, m="normal", v=0):
+def p(input_path, output_path, charge_tax=True,  drop_outliers=False, m="normal", v=0):
     if m == "future":
         raise NotImplementedError("سيُدعم لاحقاً")
 
-    l = getData(f)
-    if not l:
+    table = read_table(input_path)
+    if not  table:
         return None
-    h = l[0]
-    r = l[1:]
+    header =  table[0]
+    rows =  table[1:]
 
-    # x = عمود الكمية ، y = عمود السعر ، z = عمود الخصم
-    x = -1
-    y = -1
-    z = -1
-    for i in range(len(h)):
-        if h[i] == "units_sold":
-            x = i
-        if h[i] == "unit_price":
-            y = i
-        if h[i] == "discount":
-            z = i
+    
+    units_col = -1
+    price_col = -1
+    discount_col = -1
+    for i in range(len(header)):
+        if header[i] == "units_sold":
+            units_col = i
+        if header[i] == "unit_price":
+            price_col = i
+        if header[i] == "discount":
+            discount_col = i
 
-    n1 = []
-    for row in r:
+    gross = []
+    for row in rows:
         try:
-            a = float(row[x])
+            a = float(row[ units_col])
         except:
             a = 0.0
         try:
-            b = float(row[y])
+            b = float(row[price_col])
         except:
             b = 0.0
-        n1.append(a * b)
+        gross.append(a * b)
 
-    n2 = []
-    for i in range(len(r)):
+    discounts = []
+    for i in range(len(rows)):
         try:
-            c = float(r[i][z])
+            c = float(rows[i][discount_col])
         except:
             c = 0.0
-        n2.append(n1[i] * c / 100)
+        discounts.append(gross[i] * c / 100)
 
-    n3 = []
-    for i in range(len(r)):
-        net = n1[i] - n2[i]
-        if t:
-            n3.append(net * NUM)
+    taxes = []
+    for i in range(len(rows)):
+        net = gross[i] - discounts[i]
+        if charge_tax:
+            taxes.append(net * TAX_RATE)
         else:
-            n3.append(0.0)
+            taxes.append(0.0)
 
     codes = []
-    for row in r:
+    for row in rows:
         got = 0
-        for i in range(len(h)):
-            if h[i] == "region":
+        for i in range(len(header)):
+            if header[i] == "region":
                 v2 = row[i].strip().lower()
                 if v2 != "":
-                    if v2 in R:
-                        got = R[v2]
+                    if v2 in REGION_CODES:
+                        got = REGION_CODES[v2]
                     else:
                         got = 0
         codes.append(got)
 
     units = []
-    for row in r:
+    for row in rows:
         try:
-            units.append(float(row[x]))
+            units.append(float(row[ units_col]))
         except:
             units.append(0.0)
     if len(units) > 1:
@@ -144,24 +144,24 @@ def p(f, o, t=True, d=False, m="normal", v=0):
             flag1.append(0)
 
     st = ThresholdStrategyFactory.create("fixed")
-    th = st.get(r)
-    flag2 = []
-    for i in range(len(r)):
-        tot = n1[i] - n2[i] + n3[i]
+    th = st.get(rows)
+    high_value_flags = []
+    for i in range(len(rows)):
+        tot = gross[i] - discounts[i] + taxes[i]
         if tot > th:
-            flag2.append(1)
+            high_value_flags.append(1)
         else:
-            flag2.append(0)
+            high_value_flags.append(0)
 
     data2 = []
-    for i in range(len(r)):
-        tot = n1[i] - n2[i] + n3[i]
-        data2.append(r[i] + [
-            "%.2f" % n1[i], "%.2f" % n2[i], "%.2f" % n3[i], "%.2f" % tot,
-            str(codes[i]), str(flag1[i]), str(flag2[i]),
+    for i in range(len(rows)):
+        tot = gross[i] - discounts[i] + taxes[i]
+        data2.append(rows[i] + [
+            "%.2f" % gross[i], "%.2f" % discounts[i], "%.2f" % taxes[i], "%.2f" % tot,
+            str(codes[i]), str(flag1[i]), str(high_value_flags[i]),
         ])
 
-    if d:
+    if  drop_outliers:
         tmp = []
         for row in data2:
             if row[-2] == "0":
@@ -172,16 +172,16 @@ def p(f, o, t=True, d=False, m="normal", v=0):
         rr = {"sanaa": 1, "aden": 2, "taiz": 3, "hodeidah": 4}
         for k in rr:
             cnt = 0
-            for row in r:
-                for i in range(len(h)):
-                    if h[i] == "region" and row[i].strip().lower() == k:
+            for row in rows:
+                for i in range(len(header)):
+                    if header[i] == "region" and row[i].strip().lower() == k:
                         cnt += 1
             print("  " + k + ": " + str(cnt))
 
-    h2 = h + ["gross", "discount_amount", "tax", "total",
-              "region_code", "is_outlier", "is_high_value"]
-    os.makedirs(os.path.dirname(o) or ".", exist_ok=True)
-    with open(o, "w", newline="", encoding="utf-8") as f2:
+    h2 = header + ["gross", "discount_amount", "tax", "total",
+                "region_code", "is_outlier", "is_high_value"]
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    with open(output_path, "w", newline="", encoding="utf-8") as f2:
         w = csv.writer(f2)
         w.writerow(h2)
         w.writerows(data2)

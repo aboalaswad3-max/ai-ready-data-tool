@@ -55,7 +55,7 @@ def read_rows(path):
 
 
 def write_rows(header, rows, path):
-"""يكتب ملف"""
+    """يكتب ملف"""
 
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as f:
